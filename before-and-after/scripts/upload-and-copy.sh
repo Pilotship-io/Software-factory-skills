@@ -89,7 +89,7 @@ upload_file() {
     echo "Uploading: $filename (via $IMAGE_ADAPTER)" >&2
 
     # Call the adapter script
-    "$ADAPTER_SCRIPT" "$file"
+    bash "$ADAPTER_SCRIPT" "$file"   # via bash: the installer may drop the executable bit
 }
 
 # Upload both files
