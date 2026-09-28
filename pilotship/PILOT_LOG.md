@@ -19,7 +19,17 @@ Pilot repo: `Pilotship-io/pilotship-web` · Started: 2026-09-21
 Time columns are wall-clock minutes for the beat, roughly. "What broke"
 means anything a human had to step in for: a skipped beat, a guard that
 | 2026-09-25 | pilotship-web #227 dev-only session (feat/dev-session-bypass-a7c2), closes #215 | Claude Code | Fable 5.1 | 3 | ~40 | ~25 | 3 loops, 3/5 → 5/5 → 5/5 (~30 min) | First real portal screenshots. Gist adapter cannot hold a PNG (never could); Greptile: bypass reachable from the LAN (next dev binds all interfaces), env script advertised a URL it could not honor, server-only import (which knip then rejected in a route). Next injects x-forwarded-* itself, so "forwarded = proxy" is wrong. | repo adapter + docs (fork PR), pilotship-web #227 |
+| 2026-09-28 | pilotship-web #232 CLI numeric-flag validation (fix/cli-number-flags-b8d4), closes #214 | Claude Code | Fable 5.1 | 3 | ~30 | ~25 | 5 loops, 4/5 → 4/5 → 4/5 → 4/5 → 5/5 (~70 min, one stuck check re-requested) | Bot found Infinity→null (same bug, bigger input) and three server maxima; then three convention nits, one of which was a real contract gap (the `@/` rule had no `cli/` exception; needed in AGENTS.md AND docs/conventions.md). Also merged that day: #231 (v1.2 sync + repo adapter) with three adapter findings (exec bit, temp-file mode, "never committed" wording) → fork #13. | pilotship-web #232, #231; fork #13 |
 fired wrongly, a tool that was missing, a screenshot that leaked data.
+
+## Rep 5 lessons (pilotship-web #232, 2026-09-28)
+
+1. **Output pairs are a full Prove beat.** No UI, no screenshot: a before block showing `exit 0` and the field nulled, an after block showing the flag-named error and the field intact, both against the worktree server with a locally minted PAT. The reviewer accepted it without asking for more.
+2. **Fix the same bug at larger inputs.** The first cut rejected `abc` but let a 400-digit amount through as Infinity, which serializes to null: the exact failure the PR existed to stop. When the fix is "reject bad input", test the boundary, not just the obvious typo.
+3. **Convention nits are where the rounds go.** Three of five rounds were `@/` alias, `type` vs `interface`, and a `.js` suffix. One of them exposed a real gap (the alias rule had no exception for the separate `cli/` package) and had to be fixed in both the contract and the full conventions doc, or the reviewer keeps citing the one you missed. Read the repo's conventions file before the first push.
+4. **The review check can hang.** One Greptile run sat `in_progress` for 25 minutes with no comment. Posting `@greptile review` again produced a fresh review within three minutes. greploop should treat >10 minutes in progress as "re-request".
+5. **A proof script under `.artifacts/` must use relative imports** (`../../src/db/...`); the `@/` alias resolves to a second copy of the schema module and drizzle then sees undefined tables.
+6. **CI does not typecheck `cli/`.** It had been red on a broken `table()` call nobody noticed. Either add `cd cli && npm run typecheck` to CI or accept that the CLI is checked only when someone touches it.
 
 ## Rep 4 lessons (pilotship-web #227, 2026-09-25)
 
@@ -69,6 +79,7 @@ Also learned: the primary checkout on this Mac had no `.env.local`, so the scrip
 | Date | File | Change | Why |
 |---|---|---|---|
 | 2026-09-21 | `templates/scripts/worktree-id.sh` (new), `worktree-env.sh`, `db-guard.sh`, `factory-init.sh` | collision-resistant worktree id (prefix + sha256 hash) shared by both scripts | Greptile finding on pilotship-web #207: truncated slugs could collide and defeat isolation |
+| 2026-09-28 | `before-and-after/scripts/adapters/repo.sh`, `upload-and-copy.sh`, `AGENTS.template.md` (v1.2 text) | exec bit + bash invoke, mktemp 0600, evidence wording ("uploaded to the evidence branch, never committed to a product branch") | Greptile on pilotship-web #231 (fork #13) |
 | 2026-09-25 | `before-and-after/scripts/adapters/repo.sh` (new), `upload-and-copy.sh`, `AGENTS.template.md` (v1.2), PR template, ONBOARDING, README | default adapter gist → repo (orphan `evidence` branch in the repo) | gists reject binaries; found on the first real screenshot (pilotship-web #227) |
 | 2026-09-21 | `before-and-after/scripts/adapters/gist.sh` | secret gists instead of public | privacy of portal screenshots (Greptile round 2 on #207) |
 | 2026-09-21 | `templates/scripts/worktree-env.sh` | collision-aware port allocation (skips sibling-claimed and listening ports, keeps own, fails when full) | Greptile round 2 on #207: hash % range could hand two worktrees the same port |
