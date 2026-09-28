@@ -79,8 +79,9 @@ Proof rules for Pilotship repos:
   default public host. Portal screenshots can show client names. Gists
   cannot hold images.
 - Never capture real client or customer data. Use local seed data.
-- Evidence lives in `.artifacts/<task-name>/` (gitignored) and is uploaded,
-  never committed.
+- Evidence lives in `.artifacts/<task-name>/` (gitignored) and is uploaded
+  to the `evidence` branch by the repo adapter. It is never committed to a
+  product branch: not to the PR, not to `main`.
 - Carve-outs that need no Before | After: docs-only changes, dependency
   bumps, CI config. Say which carve-out applies in the PR's Proof section.
 

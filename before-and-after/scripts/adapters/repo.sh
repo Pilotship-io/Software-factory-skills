@@ -32,7 +32,9 @@ PREFIX="${EVIDENCE_PREFIX:-$(git rev-parse --abbrev-ref HEAD 2>/dev/null | tr -c
 PREFIX="${PREFIX:-unsorted}"
 NAME="$(basename "$FILE")"
 DEST="$PREFIX/$NAME"
-TMP="${TMPDIR:-/tmp}/evidence-put.$$.json"
+# Private temp file (mktemp: 0600), so another local user cannot read the
+# screenshot body while it waits to upload.
+TMP="$(mktemp "${TMPDIR:-/tmp}/evidence-put.XXXXXX")"
 trap 'rm -f "$TMP"' EXIT
 
 # 1. orphan branch on first use: blob -> tree -> parentless commit -> ref
