@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# factory-template-version: 1.1  (keep: factory-init.sh compares it on re-runs)
+# factory-template-version: 1.2  (keep: factory-init.sh compares it on re-runs)
 # factory-gate.sh — the software factory's entry gate, wired into the agent
 # harness as hooks (see .claude/settings.json). Two modes:
 #
@@ -37,6 +37,9 @@ set -uo pipefail
 
 MODE="${1:-session}"
 export FACTORY_DEFAULT_BRANCH="${FACTORY_DEFAULT_BRANCH:-main}"
+# Branches no agent may push to directly, in any refspec spelling. The trunk
+# plus main/master; add release lines here if the repo has them.
+export FACTORY_PROTECTED_BRANCHES="${FACTORY_PROTECTED_BRANCHES:-$FACTORY_DEFAULT_BRANCH main master}"
 
 # The harness hands the tool call (or session) as JSON on stdin and runs the
 # hook with the PROJECT ROOT as its working directory, even when the session
@@ -106,7 +109,7 @@ case "$MODE" in
     # A function, not a $( ) around the heredoc: bash scans a substitution for
     # quotes and parentheses and the regexes below contain both.
     decide() {
-    GATE_INPUT="$input" GATE_CWD="$PWD" GATE_PRIMARY="$primary_root" GATE_IN_WORKTREE="$in_worktree" GATE_ON_DEFAULT="$on_default" python3 - <<'PY'
+    GATE_INPUT="$input" GATE_CWD="$PWD" GATE_PRIMARY="$primary_root" GATE_IN_WORKTREE="$in_worktree" GATE_ON_DEFAULT="$on_default" GATE_BRANCH="$branch" GATE_PROTECTED="$FACTORY_PROTECTED_BRANCHES" python3 - <<'PY'
 import json, os, re, sys
 try:
     d = json.loads(os.environ.get("GATE_INPUT") or "")
@@ -157,6 +160,33 @@ GIT_MUTATE = re.compile(r"(?:^|[;&|(]\s*|\s)git" + OPT + r"\s+(?:commit|merge|re
 # git aimed at the primary checkout from anywhere.
 if names_primary and GIT_MUTATE.search(flat):
     refuse("running `%s` (git write aimed at the primary checkout)" % flat[:160])
+
+# Pushes to a protected branch are refused from ANY session and in ANY
+# spelling: `git push origin phase-2`, `HEAD:phase-2`, `HEAD:refs/heads/phase-2`,
+# `+feat:phase-2`, a delete (`:phase-2`), or a bare `git push` while the
+# current branch is protected. Plain --force / -f is refused everywhere;
+# --force-with-lease on a task branch is the contract's allowed form.
+protected = set(os.environ.get("GATE_PROTECTED", "main master").split())
+current_branch = os.environ.get("GATE_BRANCH", "")
+PUSH = re.compile(r"(?:^|[;&|(]\s*|\s)git" + OPT + r"\s+push\b(?P<args>[^;&|]*)")
+def dest_of(spec):
+    spec = spec.lstrip("+")
+    if ":" in spec:
+        spec = spec.split(":", 1)[1]
+    if spec.startswith("refs/heads/"):
+        spec = spec[len("refs/heads/"):]
+    return spec
+for m in PUSH.finditer(flat):
+    args = m.group("args").split()
+    if any(a == "-f" or a == "--force" or a.startswith("--force=") for a in args):
+        refuse("running `%s` (plain force push; use --force-with-lease on your own task branch)" % flat[:160])
+    positional = [a for a in args if not a.startswith("-")]
+    refspecs = positional[1:]            # positional[0] is the remote
+    for spec in refspecs:
+        if dest_of(spec) in protected:
+            refuse("running `%s` (push to protected branch %s)" % (flat[:160], dest_of(spec)))
+    if not refspecs and current_branch in protected:
+        refuse("running `%s` (bare push while on protected branch %s)" % (flat[:160], current_branch))
 
 if not session_in_primary_on_default:
     sys.exit(0)

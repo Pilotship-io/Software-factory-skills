@@ -22,8 +22,9 @@ repo has it) as the first command in a fresh worktree.
 
 ## Permissions
 
-`.claude/settings.json` denies pushes to `main`, force pushes, and destructive
-SQL, and asks before anything that stops or wipes the shared database
+`.claude/settings.json` denies pushes to `main` (in every refspec spelling;
+`scripts/factory-gate.sh` refuses the same by destination from any session),
+force pushes, and destructive SQL, and asks before anything that stops or wipes the shared database
 container (`db:down`, `docker compose down`, `db:push`). These mirror the
 rules in AGENTS.md; the script guards in `scripts/` enforce the same rules in
 every other harness.

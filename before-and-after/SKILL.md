@@ -28,7 +28,7 @@ allowed-tools:
 - Use `--full` unless user explicitly asks for full page / full scroll capture
 
 **DO:**
-- Use `--markdown` when user wants PR integration or markdown output
+- For PR markdown, upload with `.agents/skills/before-and-after/scripts/upload-and-copy.sh <before.png> <after.png> --markdown`, which uses the private repo adapter. Never the CLI's own `--markdown`: that uploads to the public 0x0.st host (Pilotship edit)
 - Use `--mobile` / `--tablet` if user mentions phone, mobile, tablet, responsive, etc.
 - Assume current state is **After**
 - If user provides only one URL or says "PR screenshots" without URLs, **ASK**: "What URL should I use for the 'before' state? (production URL, preview deployment, or another local port)"
@@ -38,7 +38,7 @@ allowed-tools:
 1. **Pre-flight** — `which before-and-after || npm install -g @vercel/before-and-after`
 2. **Protection check** — if `.vercel.app` URL: `curl -s -o /dev/null -w "%{http_code}" "<url>"` (401/403 = protected)
 3. **Capture** — `before-and-after "<before-url>" "<after-url>"`
-4. **Upload** — `./scripts/upload-and-copy.sh <before.png> <after.png> --markdown`
+4. **Upload** — `.agents/skills/before-and-after/scripts/upload-and-copy.sh <before.png> <after.png> --markdown`
 5. **PR integration** — optionally `gh pr edit` to append markdown
 
 **Never skip steps 1-2.**
@@ -60,8 +60,8 @@ before-and-after url1 url2 --mobile    # 375x812
 before-and-after url1 url2 --tablet    # 768x1024
 before-and-after url1 url2 --full      # full scroll
 
-# From existing images
-before-and-after before.png after.png --markdown
+# From existing images: upload through the repo adapter, not the CLI's --markdown (public host)
+.agents/skills/before-and-after/scripts/upload-and-copy.sh before.png after.png --markdown
 
 # Via npx (use full package name!)
 npx @vercel/before-and-after url1 url2
@@ -75,17 +75,23 @@ npx @vercel/before-and-after url1 url2
 | `-f, --full` | Full scrollable page |
 | `-s, --selector` | CSS selector to capture |
 | `-o, --output` | Output directory (default: ~/Downloads) |
-| `--markdown` | Upload images & output markdown table |
-| `--upload-url <url>` | Custom upload endpoint (default: 0x0.st) |
+| `--markdown` | Uploads to the public 0x0.st host and prints a table. Not used here: upload with `upload-and-copy.sh` instead (Pilotship edit) |
+| `--upload-url <url>` | Custom upload endpoint for the CLI's own upload (its default is the public 0x0.st; this repo never uses that path) |
 
 ## Image Upload
 
-```bash
-# Default (0x0.st - no signup needed)
-./scripts/upload-and-copy.sh before.png after.png --markdown
+Pilotship edit: `upload-and-copy.sh` defaults to the `repo` adapter, an orphan
+`evidence` branch in the repo under review that only people who can see the PR
+can read. The public 0x0.st host is never used. Capture with the CLI, then
+upload with this script. Paths below are from the repo root (the worktree
+root in a task), where the skill is installed under `.agents/skills/`.
 
-# GitHub Gist
-IMAGE_ADAPTER=gist ./scripts/upload-and-copy.sh before.png after.png --markdown
+```bash
+# Default here: repo adapter (private evidence branch in this repo)
+.agents/skills/before-and-after/scripts/upload-and-copy.sh before.png after.png --markdown
+
+# Secret GitHub gist, text files only (gists reject PNGs)
+IMAGE_ADAPTER=gist .agents/skills/before-and-after/scripts/upload-and-copy.sh notes.md --markdown
 ```
 
 ## Vercel Deployment Protection

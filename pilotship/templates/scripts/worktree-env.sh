@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# factory-template-version: 1.1  (keep: factory-init.sh compares it on re-runs)
+# factory-template-version: 1.2  (keep: factory-init.sh compares it on re-runs)
 # worktree-env.sh — give this git worktree its own database and dev-server port.
 #
 # Run ONCE in a fresh worktree, before installing deps or starting anything:
@@ -16,6 +16,7 @@
 # Repo-specific settings live in the block below. Every value can also be
 # overridden by an environment variable of the same name.
 set -euo pipefail
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"   # resolved before any cd: package scripts call this as ../scripts/<name>.sh
 
 # ---------------------------------------------------------------- settings --
 DB_PREFIX="${DB_PREFIX:-app_dev}"                 # primary checkout's DB name; worktree DBs are ${DB_PREFIX}_<slug>
@@ -41,8 +42,8 @@ command -v git >/dev/null || fail "git not found"
 # commands instead of a raw docker or psql error further down. Not for
 # --drop: cleanup needs only git and the database, and must not be held
 # hostage by an expired gh login or a missing screenshot tool.
-if [ "${1:-}" != "--drop" ] && [ -f "$(dirname "$0")/doctor.sh" ]; then
-  bash "$(dirname "$0")/doctor.sh" --for-worktree || fail "this machine is not ready for the factory yet (see the ✗ lines above; npm run doctor for the full report)"
+if [ "${1:-}" != "--drop" ] && [ -f "$script_dir/doctor.sh" ]; then
+  bash "$script_dir/doctor.sh" --for-worktree || fail "this machine is not ready for the factory yet (see the ✗ lines above; npm run doctor for the full report)"
 fi
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 || fail "not inside a git checkout"
 
@@ -61,7 +62,7 @@ branch="$(git branch --show-current)"
 [ -n "$branch" ] || fail "detached HEAD; check out a branch first"
 case "$branch" in main|master) fail "refusing to run on '$branch'. Create a task branch first." ;; esac
 
-. "$(dirname "$0")/worktree-id.sh"   # one definition of the worktree identity, shared with db-guard.sh
+. "$script_dir/worktree-id.sh"   # one definition of the worktree identity, shared with db-guard.sh
 slug="$(worktree_id "$branch")"
 db_name="${DB_PREFIX}_${slug}"
 # Port: start from the branch hash, but never hand out a port another worktree
@@ -112,6 +113,19 @@ psql_db() {
 db_exists() { [ "$(psql_admin -c "SELECT 1 FROM pg_database WHERE datname='${db_name}'" | tr -d '[:space:]')" = "1" ]; }
 
 if [ "${1:-}" = "--drop" ]; then
+  # Drop the database this worktree RECORDED when it was set up, not the one the
+  # current branch name maps to: a worktree switched to another task branch
+  # before cleanup would otherwise force-drop that task's database and leave
+  # its own behind. The recorded name must still be one of this repo's worktree
+  # databases, and never the primary one.
+  recorded="$( { [ -f "$repo_root/$ENV_FILE" ] && grep -E '^FACTORY_WORKTREE_DB=' "$repo_root/$ENV_FILE" | tail -n1 | cut -d= -f2; } || true)"
+  if [ -n "$recorded" ] && [ "$recorded" != "$db_name" ]; then
+    case "$recorded" in
+      "${DB_PREFIX}_"*) log "branch is now '$branch' but this worktree recorded ${recorded} in $ENV_FILE; dropping the recorded database"; db_name="$recorded" ;;
+      *) fail "$ENV_FILE records '$recorded', which is not a worktree database of this repo; refusing to drop anything" ;;
+    esac
+  fi
+  [ "$db_name" != "$DB_PREFIX" ] || fail "refusing to drop the primary database ${DB_PREFIX}"
   if db_exists; then
     log "dropping database ${db_name}"
     psql_admin -c "DROP DATABASE \"${db_name}\" WITH (FORCE)"
@@ -137,6 +151,10 @@ else
 fi
 
 db_url="postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${db_name}"
+# The file carries the primary checkout's secrets: it exists with mode 0600
+# before any byte lands in it, whatever the umask (the redirect below then
+# truncates in place and keeps the mode).
+( umask 077; : > "$repo_root/$ENV_FILE" ); chmod 600 "$repo_root/$ENV_FILE"
 {
   grep -vE '^(DATABASE_URL|PORT|FACTORY_WORKTREE_DB)=' "$src" || true
   printf '\n# --- written by scripts/worktree-env.sh for branch %s ---\n' "$branch"
