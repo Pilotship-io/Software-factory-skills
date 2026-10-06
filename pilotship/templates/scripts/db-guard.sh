@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# factory-template-version: 1.1  (keep: factory-init.sh compares it on re-runs)
+# factory-template-version: 1.2  (keep: factory-init.sh compares it on re-runs)
 # db-guard.sh — refuse to run a database command against the wrong database.
 #
 # Wire it in front of every command that migrates, seeds, or resets:
@@ -17,6 +17,7 @@
 #
 # DB_PREFIX must match the value in scripts/worktree-env.sh.
 set -euo pipefail
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"   # resolved before any cd: package scripts call this as ../scripts/<name>.sh
 
 DB_PREFIX="${DB_PREFIX:-app_dev}"
 ENV_FILE="${ENV_FILE:-.env.local}"
@@ -45,7 +46,7 @@ case "$host" in
   *) fail "DATABASE_URL points at '$host', not a local database. Local db scripts only run against local databases." ;;
 esac
 
-. "$(dirname "$0")/worktree-id.sh"   # one definition of the worktree identity, shared with worktree-env.sh
+. "$script_dir/worktree-id.sh"   # one definition of the worktree identity, shared with worktree-env.sh
 
 git_dir="$(cd "$(git rev-parse --git-dir)" && pwd -P)"
 common_dir="$(cd "$(git rev-parse --git-common-dir)" && pwd -P)"

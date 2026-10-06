@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# factory-template-version: 1.1  (keep: factory-init.sh compares it on re-runs)
+# factory-template-version: 1.2  (keep: factory-init.sh compares it on re-runs)
 # worktree-env.sh — give this git worktree its own database and dev-server port.
 #
 # Run ONCE in a fresh worktree, before installing deps or starting anything:
@@ -16,6 +16,7 @@
 # Repo-specific settings live in the block below. Every value can also be
 # overridden by an environment variable of the same name.
 set -euo pipefail
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"   # resolved before any cd: package scripts call this as ../scripts/<name>.sh
 
 # ---------------------------------------------------------------- settings --
 DB_PREFIX="${DB_PREFIX:-app_dev}"                 # primary checkout's DB name; worktree DBs are ${DB_PREFIX}_<slug>
@@ -41,8 +42,8 @@ command -v git >/dev/null || fail "git not found"
 # commands instead of a raw docker or psql error further down. Not for
 # --drop: cleanup needs only git and the database, and must not be held
 # hostage by an expired gh login or a missing screenshot tool.
-if [ "${1:-}" != "--drop" ] && [ -f "$(dirname "$0")/doctor.sh" ]; then
-  bash "$(dirname "$0")/doctor.sh" --for-worktree || fail "this machine is not ready for the factory yet (see the ✗ lines above; npm run doctor for the full report)"
+if [ "${1:-}" != "--drop" ] && [ -f "$script_dir/doctor.sh" ]; then
+  bash "$script_dir/doctor.sh" --for-worktree || fail "this machine is not ready for the factory yet (see the ✗ lines above; npm run doctor for the full report)"
 fi
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 || fail "not inside a git checkout"
 
@@ -61,7 +62,7 @@ branch="$(git branch --show-current)"
 [ -n "$branch" ] || fail "detached HEAD; check out a branch first"
 case "$branch" in main|master) fail "refusing to run on '$branch'. Create a task branch first." ;; esac
 
-. "$(dirname "$0")/worktree-id.sh"   # one definition of the worktree identity, shared with db-guard.sh
+. "$script_dir/worktree-id.sh"   # one definition of the worktree identity, shared with db-guard.sh
 slug="$(worktree_id "$branch")"
 db_name="${DB_PREFIX}_${slug}"
 # Port: start from the branch hash, but never hand out a port another worktree

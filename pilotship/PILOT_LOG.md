@@ -4,7 +4,7 @@ What broke, what got changed, how long each beat took. One row per PR that
 went through the factory during the pilot. Fold the lessons into the
 templates and skills before tagging v1.0.
 
-Pilot repo: `Pilotship-io/pilotship-web` · Started: 2026-09-21
+Pilot repo: `Pilotship-io/pilotship-web` · Started: 2026-09-21 · First client repo: `Pilotship-io/relevance-advisors` (2026-10-06)
 
 ## PRs
 
@@ -20,7 +20,19 @@ Time columns are wall-clock minutes for the beat, roughly. "What broke"
 means anything a human had to step in for: a skipped beat, a guard that
 | 2026-09-25 | pilotship-web #227 dev-only session (feat/dev-session-bypass-a7c2), closes #215 | Claude Code | Fable 5.1 | 3 | ~40 | ~25 | 3 loops, 3/5 → 5/5 → 5/5 (~30 min) | First real portal screenshots. Gist adapter cannot hold a PNG (never could); Greptile: bypass reachable from the LAN (next dev binds all interfaces), env script advertised a URL it could not honor, server-only import (which knip then rejected in a route). Next injects x-forwarded-* itself, so "forwarded = proxy" is wrong. | repo adapter + docs (fork PR), pilotship-web #227 |
 | 2026-09-28 | pilotship-web #232 CLI numeric-flag validation (fix/cli-number-flags-b8d4), closes #214 | Claude Code | Fable 5.1 | 3 | ~30 | ~25 | 5 loops, 4/5 → 4/5 → 4/5 → 4/5 → 5/5 (~70 min, one stuck check re-requested) | Bot found Infinity→null (same bug, bigger input) and three server maxima; then three convention nits, one of which was a real contract gap (the `@/` rule had no `cli/` exception; needed in AGENTS.md AND docs/conventions.md). Also merged that day: #231 (v1.2 sync + repo adapter) with three adapter findings (exec bit, temp-file mode, "never committed" wording) → fork #13. | pilotship-web #232, #231; fork #13 |
+| 2026-10-06 | relevance-advisors #74 (chore/software-factory-45e4), first client repo | Claude Code | Fable 5.1 | 3 | ~90 | ~45 | pending: Greptile not yet enabled on the repo | Two template bugs: `db-guard.sh` and `worktree-env.sh` resolved `worktree-id.sh` from `$0` after `cd "$repo_root"`, so `../scripts/db-guard.sh` from `service/` failed. Compose file lives in `service/`, so `factory-init.sh` did not detect it (`--with-db-scripts`). No root `package.json`: `npm run doctor` wording does not apply. Trunk is `phase-2`, not `main`: gate needed `FACTORY_DEFAULT_BRANCH`, contract needed an override paragraph. `pnpm dev:local` re-ran `compose up` and recreated the shared container when `PGPORT_HOST` differed; bare `next dev` ignored the worktree's `PORT`. | fork #15 (this PR); relevance-advisors #74 |
 fired wrongly, a tool that was missing, a screenshot that leaked data.
+
+## Rep 6 lessons (relevance-advisors #74, 2026-10-06, first client repo)
+
+1. **Scripts called from a package directory must resolve their own path first.** `service/package.json` runs `bash ../scripts/db-guard.sh`; the script `cd`s to the repo root and then sources `$(dirname "$0")/worktree-id.sh`, which no longer exists relative to the new cwd. pilotship-web never hit it because its scripts live beside `package.json`. Fixed in both templates: resolve `script_dir` from `BASH_SOURCE` before any `cd`.
+2. **The trunk is not always `main`.** relevance-advisors integrates on `phase-2` and fast-forwards `main` only after a prod deploy. The contract's shared sections say `main`, so the repo-specific section carries one override paragraph, the gate runs with `FACTORY_DEFAULT_BRANCH=phase-2`, and `worktree-env.sh` refuses `phase-2` too. Template follow-up: let the gate take a list of protected branches and print the repo's trunk in its checklist.
+3. **A compose file under a package directory is invisible to the installer.** `factory-init.sh` looks for compose at the repo root; `--with-db-scripts` was needed. Either search one level down or say so in the checklist (done).
+4. **"Already running" is the only safe answer for a shared container.** A dev bootstrap that runs `docker compose up` every time will recreate the container when the host port differs from the one it was created with. It did: a shell without `PGPORT_HOST` moved it toward 5432 (taken), left it in `Created`, and a vitest run in flight lost its connection. The fix is to skip compose when the container is up and start it from the port in `DATABASE_URL` otherwise. Persist the port in a gitignored `.env` next to the compose file.
+5. **Probe the dev server's port, do not assume it.** `next dev` reads `.env.local` from its own directory, not the repo root, and picks its port before loading env files. The worktree's `PORT` was ignored and the server bound 3000. A twelve-line `scripts/dev.ts` that loads the root env file first fixed it. The checklist line "dev script honors `$PORT`" now says to prove it with a probe.
+6. **Moving a 386-line `CLAUDE.md` into `AGENTS.md` is the right call and is mostly mechanical.** Split on headings, demote one level, slot under the template's repo-specific headings, keep the words. The repo's rules came through verbatim and the contract check still passes.
+7. **A second active developer changes the review-bot plan.** The Starter seat is one developer. The repo now states who loops (Seth) and that other authors' PRs carry an explicit waiver until a seat is approved; Greptile is set to review on mention only so an auto-review on PR open cannot spend a seat.
+8. **Template version markers drifted.** `AGENTS.template.md` is v1.2 while the scripts, gate and PR template were still v1.1, so every `factory-init.sh` re-run writes `.factory.*` copies for them. The two scripts touched here moved to 1.2; the rest should follow on their next real change.
 
 ## Rep 5 lessons (pilotship-web #232, 2026-09-28)
 
@@ -79,6 +91,7 @@ Also learned: the primary checkout on this Mac had no `.env.local`, so the scrip
 | Date | File | Change | Why |
 |---|---|---|---|
 | 2026-09-21 | `templates/scripts/worktree-id.sh` (new), `worktree-env.sh`, `db-guard.sh`, `factory-init.sh` | collision-resistant worktree id (prefix + sha256 hash) shared by both scripts | Greptile finding on pilotship-web #207: truncated slugs could collide and defeat isolation |
+| 2026-10-06 | `templates/scripts/db-guard.sh`, `templates/scripts/worktree-env.sh` (v1.2), `ROLLOUT_CHECKLIST.md` | resolve the script directory from `BASH_SOURCE` before `cd`; checklist lines for a non-root compose file, a repo without a root `package.json`, a non-`main` trunk, the dev-server port probe, and the compose-recreate hazard | relevance-advisors #74 (first client rollout) |
 | 2026-09-28 | `before-and-after/scripts/adapters/repo.sh`, `upload-and-copy.sh`, `AGENTS.template.md` (v1.2 text) | exec bit + bash invoke, mktemp 0600, evidence wording ("uploaded to the evidence branch, never committed to a product branch") | Greptile on pilotship-web #231 (fork #13) |
 | 2026-09-25 | `before-and-after/scripts/adapters/repo.sh` (new), `upload-and-copy.sh`, `AGENTS.template.md` (v1.2), PR template, ONBOARDING, README | default adapter gist → repo (orphan `evidence` branch in the repo) | gists reject binaries; found on the first real screenshot (pilotship-web #227) |
 | 2026-09-21 | `before-and-after/scripts/adapters/gist.sh` | secret gists instead of public | privacy of portal screenshots (Greptile round 2 on #207) |
