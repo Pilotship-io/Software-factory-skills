@@ -21,6 +21,8 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"   # resolved befor
 
 DB_PREFIX="${DB_PREFIX:-app_dev}"
 ENV_FILE="${ENV_FILE:-.env.local}"
+DB_CONTAINER="${DB_CONTAINER:-}"                       # the local Postgres container; set it and the URL port must be its published host port (a Cloud SQL proxy on localhost is remote)
+DB_PORT_IN_CONTAINER="${DB_PORT_IN_CONTAINER:-5432}"
 
 fail() { printf '\033[1;31m[db-guard] %s\033[0m\n' "$*" >&2; exit 1; }
 
@@ -45,6 +47,21 @@ case "$host" in
   localhost|127.0.0.1|::1|postgres|db) ;;
   *) fail "DATABASE_URL points at '$host', not a local database. Local db scripts only run against local databases." ;;
 esac
+
+# "localhost" is not proof of local: the Cloud SQL Auth Proxy also answers on
+# localhost (docs/runbook.md). The only local endpoint is the port the Postgres
+# container publishes, so the URL's port has to be that one. Remote work goes
+# through the unguarded db:migrate:remote, on purpose and by hand.
+# every grep in this pipeline may legitimately match nothing; under pipefail a bare
+# non-match would end the script silently with exit 1 instead of printing a reason
+url_port="$(printf '%s' "$url" | sed -E 's#\?.*$##' | { grep -oE '@[^/:@]+:[0-9]+/' || true; } | { grep -oE '[0-9]+' || true; } | tail -1)"
+[ -n "$url_port" ] || url_port="$DB_PORT_IN_CONTAINER"
+if [ -n "$DB_CONTAINER" ]; then
+  command -v docker >/dev/null 2>&1 || fail "docker not found, so port $url_port cannot be confirmed as the local container's (a Cloud SQL Auth Proxy answers on localhost too). Start Docker, or for a remote database use <the repo's unguarded remote migrate script>."
+  container_port="$( { docker port "$DB_CONTAINER" "${DB_PORT_IN_CONTAINER}/tcp" 2>/dev/null || true; } | head -1 | sed -E 's/.*:([0-9]+)$/\1/')"
+  [ -n "$container_port" ] || fail "container $DB_CONTAINER is not running, so nothing local answers on $host:$url_port. If that port is a Cloud SQL Auth Proxy this is a REMOTE database: use <the repo's unguarded remote migrate script>. Otherwise start the container (AGENTS.md → Setup)."
+  [ "$url_port" = "$container_port" ] || fail "DATABASE_URL uses port $url_port but the local container $DB_CONTAINER listens on $container_port. A Cloud SQL Auth Proxy on localhost is a remote database; guarded scripts only run against the container. Remote: <the repo's unguarded remote migrate script>."
+fi
 
 . "$script_dir/worktree-id.sh"   # one definition of the worktree identity, shared with worktree-env.sh
 

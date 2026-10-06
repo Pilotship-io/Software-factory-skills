@@ -94,10 +94,14 @@ git push
 p4 shelve -f -c <CL_NUMBER>
 ```
 
-Wait for checks to start after push/shelve:
+Wait for the host to register the pushed head before asking for a review.
+Pilotship edit: upstream sleeps 5 s; a review requested within a minute of the
+push re-reviewed the previous commit in the pilot, so give the webhook a full
+minute, and after the review lands confirm the summary's "Last reviewed
+commit" is your head. A review of an older commit does not count.
 
 ```bash
-sleep 5
+sleep 60
 ```
 
 **GitHub** — check if Greptile is already running before posting a new trigger comment:

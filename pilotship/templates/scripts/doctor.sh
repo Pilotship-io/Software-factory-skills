@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# factory-template-version: 1.1  (keep: factory-init.sh compares it on re-runs)
+# factory-template-version: 1.2  (keep: factory-init.sh compares it on re-runs)
 # doctor.sh — is this machine ready to run the software factory on this repo?
 #
 #   npm run doctor            full report, exit 1 if anything required is missing
@@ -16,6 +16,8 @@ NODE_MAJOR_WANTED="${NODE_MAJOR_WANTED:-22}"   # what CI runs; empty to skip the
 DB_CONTAINER="${DB_CONTAINER:-}"               # docker container running the local database; empty = no local database
 DB_PORT_IN_CONTAINER="${DB_PORT_IN_CONTAINER:-5432}"
 ENV_FILE="${ENV_FILE:-.env.local}"             # env file the app reads (empty to skip)
+DB_UP_CMD="${DB_UP_CMD:-npm run db:up}"          # how THIS repo starts the database container (compose may live in a package directory)
+DB_PORT_ENV_FILE="${DB_PORT_ENV_FILE:-.env}"        # where PGPORT_HOST is persisted for compose (the .env next to the compose file)
 EXPECTED_SKILLS="${EXPECTED_SKILLS:-before-and-after code-structure evidence-driven-testing greploop greploop-apps new-feature unslop}"
 FACTORY_REPO="https://github.com/sema-solutions/Software-factory-skills"
 # ---------------------------------------------------------------------------
@@ -134,9 +136,9 @@ if [ -n "$DB_CONTAINER" ]; then
     elif docker ps -a --format '{{.Names}}' | grep -qx "$DB_CONTAINER"; then
       fail "database container $DB_CONTAINER exists but is stopped" "docker start $DB_CONTAINER"
     elif lsof -nP -iTCP:"$DB_PORT_IN_CONTAINER" -sTCP:LISTEN >/dev/null 2>&1; then
-      fail "database container $DB_CONTAINER is not running and port $DB_PORT_IN_CONTAINER is taken by something else" "start it on another host port (e.g. PGPORT_HOST=5433 npm run db:up from the primary checkout) and use that port in DATABASE_URL / DB_PORT for worktree-env.sh"
+      fail "database container $DB_CONTAINER is not running and port $DB_PORT_IN_CONTAINER is taken by something else" "pick a free port, write PGPORT_HOST=<port> to $DB_PORT_ENV_FILE (gitignored; compose reads it every time), run $DB_UP_CMD from the primary checkout, and use that port in DATABASE_URL / DB_PORT for worktree-env.sh"
     else
-      fail "database container $DB_CONTAINER is not running" "start the database from the primary checkout (see AGENTS.md → Setup, e.g. npm run db:up)"
+      fail "database container $DB_CONTAINER is not running" "start it from the primary checkout: $DB_UP_CMD (AGENTS.md → Setup)"
     fi
   fi
 fi

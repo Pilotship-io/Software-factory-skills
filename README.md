@@ -104,9 +104,12 @@ deliberate exception: `before-and-after/scripts/upload-and-copy.sh` defaults
 `IMAGE_ADAPTER` to `repo` (a new adapter, `adapters/repo.sh`, that hosts
 images on an orphan `evidence` branch of the repo itself) instead of the
 public 0x0.st host, `before-and-after/scripts/adapters/gist.sh` creates secret
-gists instead of public ones (text only: gists reject binaries), and
-`greploop/SKILL.md` waits 60 s (not 5) after a push before requesting a
-review. Re-check all four after every upstream merge. If a skill
+gists instead of public ones (text only: gists reject binaries), `greploop/SKILL.md` and `greploop-apps/SKILL.md` wait 60 s (not 5) after a
+push before requesting a review and check the last-reviewed commit, and
+`before-and-after/SKILL.md` names the installed uploader path
+(`.agents/skills/before-and-after/scripts/...`) and the repo adapter wherever
+upstream names its `--markdown` upload to 0x0.st. Re-check all of these after
+every upstream merge. If a skill
 needs Pilotship behavior, add a variant under `pilotship/skills/<name>/` rather
 than editing the vendored one.
 

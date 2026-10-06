@@ -113,6 +113,19 @@ psql_db() {
 db_exists() { [ "$(psql_admin -c "SELECT 1 FROM pg_database WHERE datname='${db_name}'" | tr -d '[:space:]')" = "1" ]; }
 
 if [ "${1:-}" = "--drop" ]; then
+  # Drop the database this worktree RECORDED when it was set up, not the one the
+  # current branch name maps to: a worktree switched to another task branch
+  # before cleanup would otherwise force-drop that task's database and leave
+  # its own behind. The recorded name must still be one of this repo's worktree
+  # databases, and never the primary one.
+  recorded="$( { [ -f "$repo_root/$ENV_FILE" ] && grep -E '^FACTORY_WORKTREE_DB=' "$repo_root/$ENV_FILE" | tail -n1 | cut -d= -f2; } || true)"
+  if [ -n "$recorded" ] && [ "$recorded" != "$db_name" ]; then
+    case "$recorded" in
+      "${DB_PREFIX}_"*) log "branch is now '$branch' but this worktree recorded ${recorded} in $ENV_FILE; dropping the recorded database"; db_name="$recorded" ;;
+      *) fail "$ENV_FILE records '$recorded', which is not a worktree database of this repo; refusing to drop anything" ;;
+    esac
+  fi
+  [ "$db_name" != "$DB_PREFIX" ] || fail "refusing to drop the primary database ${DB_PREFIX}"
   if db_exists; then
     log "dropping database ${db_name}"
     psql_admin -c "DROP DATABASE \"${db_name}\" WITH (FORCE)"
@@ -138,6 +151,10 @@ else
 fi
 
 db_url="postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${db_name}"
+# The file carries the primary checkout's secrets: it exists with mode 0600
+# before any byte lands in it, whatever the umask (the redirect below then
+# truncates in place and keeps the mode).
+( umask 077; : > "$repo_root/$ENV_FILE" ); chmod 600 "$repo_root/$ENV_FILE"
 {
   grep -vE '^(DATABASE_URL|PORT|FACTORY_WORKTREE_DB)=' "$src" || true
   printf '\n# --- written by scripts/worktree-env.sh for branch %s ---\n' "$branch"
