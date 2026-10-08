@@ -71,13 +71,21 @@ db_name="${DB_PREFIX}_${slug}"
 # stable. Probes forward through the range; fails loudly if the range is full.
 port_listening() { command -v lsof >/dev/null 2>&1 && lsof -nP -iTCP:"$1" -sTCP:LISTEN >/dev/null 2>&1; }
 ports_claimed_by_siblings() {
+  # A sibling with no env file, or an env file with no PORT line, is simply
+  # not claiming a port. Every branch here must end in status 0: under
+  # `set -e` a non-zero last command in the loop body made the whole scan,
+  # and then the script, exit silently (seen 2026-10-08 as soon as a second
+  # worktree existed that had never run this script).
   git worktree list --porcelain | awk '/^worktree /{sub(/^worktree /,""); print}' | while IFS= read -r wt; do
     [ "$wt" = "$repo_root" ] && continue
-    [ -f "$wt/$ENV_FILE" ] && grep -hE '^PORT=[0-9]+$' "$wt/$ENV_FILE" | cut -d= -f2
+    if [ -f "$wt/$ENV_FILE" ]; then
+      { grep -hE '^PORT=[0-9]+$' "$wt/$ENV_FILE" || true; } | cut -d= -f2
+    fi
   done
+  return 0
 }
 own_port="$( [ -f "$repo_root/$ENV_FILE" ] && grep -hE '^PORT=[0-9]+$' "$repo_root/$ENV_FILE" | tail -n1 | cut -d= -f2 || true)"
-claimed="$(ports_claimed_by_siblings | tr '\n' ' ')"
+claimed="$( { ports_claimed_by_siblings || true; } | tr '\n' ' ')"
 start=$(( 16#$(hash_hex "$branch") % PORT_RANGE ))
 port=""
 if [ -n "$own_port" ]; then

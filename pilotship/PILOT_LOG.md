@@ -41,6 +41,8 @@ fired wrongly, a tool that was missing, a screenshot that leaked data.
 13. **Cleanup must drop what the worktree recorded, not what the branch name maps to.** A worktree switched to another task branch before `--drop` would have force-dropped that task's database. The env file's `FACTORY_WORKTREE_DB` is the authority; anything outside the repo's prefix, or the primary database, is refused.
 14. **Skill text is read from the repo root.** Upstream's `./scripts/upload-and-copy.sh` is relative to the skill folder; installed under `.agents/skills/` it does not exist at that path, so the "required" screenshot upload could not be run as written. The skill now names the installed path, and every upload mention points at the repo adapter rather than the CLI's public-host `--markdown`.
 
+15. **`set -e` plus a scan loop is a silent exit waiting to happen.** The sibling-port scan returned the status of its last iteration, which is non-zero when the last-listed worktree has no env file. The script died before its first log line, and only once a second, never-bootstrapped worktree existed. Every branch of a scan must end in status 0, and the caller should wrap it in `|| true`.
+
 ## Rep 5 lessons (pilotship-web #232, 2026-09-28)
 
 1. **Output pairs are a full Prove beat.** No UI, no screenshot: a before block showing `exit 0` and the field nulled, an after block showing the flag-named error and the field intact, both against the worktree server with a locally minted PAT. The reviewer accepted it without asking for more.
@@ -98,6 +100,7 @@ Also learned: the primary checkout on this Mac had no `.env.local`, so the scrip
 | Date | File | Change | Why |
 |---|---|---|---|
 | 2026-09-21 | `templates/scripts/worktree-id.sh` (new), `worktree-env.sh`, `db-guard.sh`, `factory-init.sh` | collision-resistant worktree id (prefix + sha256 hash) shared by both scripts | Greptile finding on pilotship-web #207: truncated slugs could collide and defeat isolation |
+| 2026-10-08 | `templates/scripts/worktree-env.sh` | sibling-port scan tolerates a worktree without an env file (was a silent `set -e` exit, order-dependent) | relevance-advisors #80 |
 | 2026-10-06 | `templates/scripts/factory-gate.sh`, `db-guard.sh`, `worktree-env.sh`, `doctor.sh` (v1.2); `before-and-after/SKILL.md`, `greploop-apps/SKILL.md`; `CLAUDE.template.md` | push guard by refspec destination; container-port check in db-guard; env file 0600; drop the recorded database; configurable db-up hint; skill upload paths and 60 s wait | Greptile rounds 1 and 2 on relevance-advisors #74 |
 | 2026-10-06 | `templates/scripts/db-guard.sh`, `templates/scripts/worktree-env.sh` (v1.2), `ROLLOUT_CHECKLIST.md` | resolve the script directory from `BASH_SOURCE` before `cd`; checklist lines for a non-root compose file, a repo without a root `package.json`, a non-`main` trunk, the dev-server port probe, and the compose-recreate hazard | relevance-advisors #74 (first client rollout) |
 | 2026-09-28 | `before-and-after/scripts/adapters/repo.sh`, `upload-and-copy.sh`, `AGENTS.template.md` (v1.2 text) | exec bit + bash invoke, mktemp 0600, evidence wording ("uploaded to the evidence branch, never committed to a product branch") | Greptile on pilotship-web #231 (fork #13) |
