@@ -6,7 +6,7 @@
 #
 # Options:
 #     --agents "claude-code cursor codex"   harnesses to link skills into (default: those three)
-#     --source <owner/repo>                 skills source for `npx skills add` (default: sema-solutions/Software-factory-skills)
+#     --source <owner/repo>                 skills source for `npx skills add` (default: Pilotship-io/Software-factory-skills)
 #     --skip-skills                         don't run the skills installer
 #     --with-db-scripts | --no-db-scripts   force copying (or skipping) scripts/worktree-env.sh + db-guard.sh
 #                                           (default: copy when a docker-compose file exists)
@@ -25,7 +25,7 @@
 set -euo pipefail
 
 AGENTS="claude-code cursor codex"
-SOURCE="sema-solutions/Software-factory-skills"
+SOURCE="Pilotship-io/Software-factory-skills"
 SKIP_SKILLS=0
 DB_SCRIPTS="auto"
 DRY=0

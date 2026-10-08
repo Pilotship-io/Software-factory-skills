@@ -19,7 +19,7 @@ ENV_FILE="${ENV_FILE:-.env.local}"             # env file the app reads (empty t
 DB_UP_CMD="${DB_UP_CMD:-npm run db:up}"          # how THIS repo starts the database container (compose may live in a package directory)
 DB_PORT_ENV_FILE="${DB_PORT_ENV_FILE:-.env}"        # where PGPORT_HOST is persisted for compose (the .env next to the compose file)
 EXPECTED_SKILLS="${EXPECTED_SKILLS:-before-and-after code-structure evidence-driven-testing greploop greploop-apps new-feature unslop}"
-FACTORY_REPO="https://github.com/sema-solutions/Software-factory-skills"
+FACTORY_REPO="https://github.com/Pilotship-io/Software-factory-skills"
 # ---------------------------------------------------------------------------
 
 quiet=0; [ "${1:-}" = "--for-worktree" ] && quiet=1
@@ -106,8 +106,8 @@ if [ $quiet = 0 ] && [ -f "$repo_root/package.json" ]; then
 fi
 missing=""
 for s in $EXPECTED_SKILLS; do [ -d "$repo_root/.agents/skills/$s" ] || missing="$missing $s"; done
-if [ -z "$missing" ]; then ok "factory skills installed (.agents/skills)"; else fail "factory skills missing:$missing" "npx skills add sema-solutions/Software-factory-skills -a claude-code cursor codex -s '*' -y"; fi
-[ -L "$repo_root/.claude/skills/greploop" ] && ok "skills linked for Claude Code" || warn "Claude Code skill links missing (.claude/skills)" "re-run: npx skills add sema-solutions/Software-factory-skills -a claude-code cursor codex -s '*' -y"
+if [ -z "$missing" ]; then ok "factory skills installed (.agents/skills)"; else fail "factory skills missing:$missing" "npx skills add Pilotship-io/Software-factory-skills -a claude-code cursor codex -s '*' -y"; fi
+[ -L "$repo_root/.claude/skills/greploop" ] && ok "skills linked for Claude Code" || warn "Claude Code skill links missing (.claude/skills)" "re-run: npx skills add Pilotship-io/Software-factory-skills -a claude-code cursor codex -s '*' -y"
 
 # --- local database (only when the repo has one)
 if [ -n "$DB_CONTAINER" ]; then

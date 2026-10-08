@@ -139,7 +139,7 @@ enough. Ask for better evidence rather than doing the agent's job.
 ## 6. Keeping the factory current
 
 Skills and templates live in
-[sema-solutions/Software-factory-skills](https://github.com/sema-solutions/Software-factory-skills).
+[Pilotship-io/Software-factory-skills](https://github.com/Pilotship-io/Software-factory-skills).
 In a project repo, `npx skills update` pulls the latest skills. Template
 changes (AGENTS, PR template, scripts) are re-applied by running
 `factory-init.sh` again; it never overwrites, it writes `*.factory.*` files
