@@ -41,7 +41,7 @@ be captured. Windows: run all of this inside WSL2 (see
 ### Install into a repo
 
 ```bash
-git clone https://github.com/sema-solutions/Software-factory-skills.git ~/Software-factory-skills
+git clone https://github.com/Pilotship-io/Software-factory-skills.git ~/Software-factory-skills
 cd <your-repo> && git checkout -b chore/software-factory
 bash ~/Software-factory-skills/pilotship/factory-init.sh
 ```
@@ -202,7 +202,7 @@ Use it when:
 Use `npx skills` to install skills to most coding agents:
 
 ```bash
-npx skills add sema-solutions/Software-factory-skills
+npx skills add Pilotship-io/Software-factory-skills
 ```
 
 Claude Code picks up the skill automatically and invokes it when a task matches the skill's description. You can also invoke one explicitly with `/code-structure` or `/evidence-driven-testing`.
